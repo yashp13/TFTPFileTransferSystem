@@ -73,7 +73,7 @@ public class ErrorMessagesHandler {
 	/*15*/		"File, %s, not found.",
 	/*16*/		"File, %s, exist.",
 	/*17*/		"Create file, %s, failed. Can be caused by Access Violation.",
-	/*18*/		"Expected Packet to be 516 bytes, but received %d bytes.",
+	/*18*/		"Expected Packet to be 516 bytes, but received over 516 bytes",
 	/*19*/		"Unknown transfer ID received"
 	};
 	

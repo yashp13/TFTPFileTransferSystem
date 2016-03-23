@@ -100,9 +100,9 @@ public class WriteRequestHandler {
 							//error, illegal TFTP operation
 							
 							ErrorMessagesHandler invHld = new ErrorMessagesHandler(rcvHanlder);
-							invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516, packet.getLength());
+							invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516);
 							
-							System.out.printf("Expected Packet to be 516 bytes, but received %d bytes.", packet.getLength());
+							System.out.printf("Expected Packet to be 516 bytes, but received greater than 516 bytes", packet.getLength());
 							
 							continue;
 						}
@@ -467,7 +467,7 @@ public class WriteRequestHandler {
 			try {
 				bufferedOutputStream.close();
 			} catch (IOException e) {
-				//e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 	}

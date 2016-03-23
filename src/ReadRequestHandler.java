@@ -125,11 +125,14 @@ public class ReadRequestHandler {
 								//error, illegal TFTP operation
 								
 								ErrorMessagesHandler invHld = new ErrorMessagesHandler(rcvHanlder);
-								invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516, packet.getLength());
+								invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516);
 								
-								System.out.printf("Expected Packet to be 516 bytes, but received %d bytes.", packet.getLength());
+								System.out.printf("Expected Packet to be 516 bytes, but received greater than 516 bytes", packet.getLength());
 								
-								continue;
+								ErrorPack = true;
+								break;
+								
+								//continue;
 							}
 							
 							System.out.println("RRQ: Reveived package. Not Timedout!");
@@ -188,13 +191,14 @@ public class ReadRequestHandler {
 									}
 									
 									if(!rcvHanlder.isAckPackage(dataBuf)) {
-										timedOutOrIOError = true;
+										ErrorPack = true;
 						    			ErrorMessagesHandler invHld = new ErrorMessagesHandler(rcvHanlder);
 						    			invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.INVALID_OPCODE, 4, opCode);
-						    			closeBufferedInputStream();
-						    			closeFileInputStream();
+						    			//closeBufferedInputStream();
+						    			//closeFileInputStream();
 						    			System.out.println("RRQ: Not ACK, Block:" + rcvHanlder.getPkgBlock(sendBuf) + ", Received OpCode:" + opCode + ", Data Length:" + (sendLen + 4));
 							        	
+						    			break;
 						        	}
 									
 									// Can't be explained as a duplicate, send error
@@ -207,8 +211,12 @@ public class ReadRequestHandler {
 										packet = new DatagramPacket(sendBuf, sendLen + 4, remoteIpAddress, remotePort);
 							        	rcvHanlder.transferSocket.send(packet);	
 							        	System.out.println("RRQ: Wrong block, Block:" + rcvHanlder.getPkgBlock(sendBuf) + ", Received block:" + blk + ", Data Length:" + (sendLen + 4));
+									
+							        	break;
+							        	
 									} else {
 										
+										System.out.println("Duplicate packet received, ignored.");
 										// blk < expectedBlock, ignore since it can be explained as a duplicate
 										
 									}
@@ -306,6 +314,7 @@ public class ReadRequestHandler {
 			        			        
 		        	if(sendLen < 512) {
 		        		//done
+		        		
 		        		timeToBreak = true;
 		        	}	 
 		        	

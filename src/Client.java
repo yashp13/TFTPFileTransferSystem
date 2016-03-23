@@ -723,7 +723,8 @@ public class Client {
             
             
             
-            if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)){
+            if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)
+            		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket)){
             	System.out.println("CLIENT: -----------------ERROR CODE RECEIVED");
             	DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
             	System.out.println("CLIENT: -----------------SHUTTING DOWN and Restarting Client");

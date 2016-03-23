@@ -40,6 +40,8 @@ public class ReceivedPacketHandler implements Runnable {
 		byte[] pkgData = new byte[1024];
 		
 		try {
+			
+			
 			pkgData = receivedPacket.getData();
 			int opCode = getPkgOpCode(pkgData);
 			

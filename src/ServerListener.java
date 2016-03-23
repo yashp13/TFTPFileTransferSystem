@@ -75,9 +75,9 @@ public class ServerListener extends Thread {
 						//error, illegal TFTP operation
 						
 						ErrorMessagesHandler invHld = new ErrorMessagesHandler(this);
-						invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516, ReceivePacket.getLength());
+						invHld.errorHandler(ErrorMessagesHandler.RFC_ILLEGAL_OP, ErrorMessagesHandler.PACKET_LONGER_THAN_516);
 						
-						System.out.printf("Expected Packet to be 516 bytes, but received %d bytes.", ReceivePacket.getLength());
+						System.out.printf("Expected Packet to be 516 bytes, but received greater than 516 bytes.");
 						
 						continue;
 					}
