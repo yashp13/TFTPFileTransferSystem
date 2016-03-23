@@ -17,9 +17,10 @@ public class ErrorSim extends Thread{
     private boolean packet_lost = false;
     private boolean read = false;
     private boolean write = false;
-    private int server_PORT=69;
+    private InetAddress server_ad;
+    private int server_PORT;
+    private InetAddress client_ad;
     protected int client_PORT;
-    protected int my_PORT;
     protected static ErrorSim host;
     private List<ErrorType> error_list;
     private int error_packet_number;
@@ -57,6 +58,7 @@ public class ErrorSim extends Thread{
     }
     public void run(){
         /*  Receive the packet from Client  */
+        boolean packet_ready = false;
         boolean is_ack = false;
         boolean is_data = false;
         boolean client_error_applied = false; 
@@ -65,18 +67,19 @@ public class ErrorSim extends Thread{
         boolean write_last_packet = false;
         boolean error_packet = false;
         boolean finished = false;
+        boolean packet_lost_lock = false;
         do{
             byte buffer[] = new byte[516];
             byte[] data;
             int error_code = 0;
             invaild_tid = false;
-            
             receivePacket = new DatagramPacket(buffer, buffer.length);
-           if((write_last_packet || read_last_packet)){if(client_error_applied)System.out.println("CLIENT ERROR APPLIED FAILED"); if(server_error_applied)System.out.println("SERVER ERROR APPLIED FAILED");}
+           if((write_last_packet || read_last_packet)){if(!client_error_applied)System.out.println("CLIENT ERROR APPLIED FAILED"); else if(!server_error_applied)System.out.println("SERVER ERROR APPLIED FAILED");}
+           if(error_packet){initial_packet = true;error_list.remove(0);}
            if((write_last_packet || error_packet) &&error_list.isEmpty()){System.out.println("------------------------Error List is Over Please ReEnter------------------------");break;}
            System.out.println("Error Simulator: Waiting for the client...");
-           if(error_packet){initial_packet = true;}
-           if(!packet_lost||write){
+           //!packet_lost||write
+           if(!packet_lost){
                try{
                    if(initial_packet){
                        receiveSocket.receive(receivePacket);
@@ -89,73 +92,79 @@ public class ErrorSim extends Thread{
                        is_ack = e.isAck(); 
                        is_data = e.isData();
                        delay = e.getDelay();
+                       first_time_error = true;
                     }
                    else{
                        ClientSocket.receive(receivePacket);
                     }
+                   client_ad = receivePacket.getAddress(); 
                    client_PORT = receivePacket.getPort();
                 }
                 catch (IOException e) {
                         e.printStackTrace();
                         System.exit(1);
                 }
-                //clientTID = receivePacket.getPort();
                 data = new byte[receivePacket.getLength()];
                 System.arraycopy(receivePacket.getData(), 0, data, 0, data.length);
                 initial_packet = isInitial(data);
-                if(initial_packet){server_PORT = 69;read_last_packet = false; write_last_packet = false; error_packet = false;}
+                //getByName("198.")
+                if(initial_packet){try{server_ad = InetAddress.getLocalHost();}catch(UnknownHostException e){};server_PORT = 69;read_last_packet = false; write_last_packet = false; error_packet = false;}
                 displayPacket(receivePacket, "receive");
-                if(client_error_applied)packet_lost = false;
                 if((((write && is_data)||( read && is_ack)) && getPacketNumber(receivePacket.getData()) == error_packet_number && first_time_error) || (!is_data && !is_ack && !client_error_applied && first_time_error)){
                     System.out.println("\n--------Packet found. TO Server---------");
-                    error_code = error_code_number;
                     client_error_applied = true;
                     packet_lost = false;
-                    first_time_error = false;
+                    first_time_error = false; 
+                    error_code = error_code_number;
                 }
-                else {error_code = 0;client_error_applied = false;first_time_error = true;}
-                sendPacket = errorCode(error_code,data, receivePacket.getLength(), receivePacket.getAddress(), server_PORT, ServerSocket);
+                else {error_code = 0;client_error_applied = false;}
+                sendPacket = errorCode(error_code,data, receivePacket.getLength(), server_ad, server_PORT, ServerSocket);
                 write_last_packet = isLast(data,write);
                 if(write_last_packet){
                     initial_packet = true;error_list.remove(0);
                 }
-                
                displayPacket(sendPacket, "send");
-              
-            }
-            
-    
-           
-           if(!packet_lost|| (read && !initial_packet)){
+               packet_lost_lock=false;
+          }
+
+          if(packet_lost&&server_error_applied && is_data)packet_ready = true;//For reading request, Data lost
+          if(server_error_applied && packet_ready && read){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For reading request, Data lost
+          
+          if(packet_lost&&client_error_applied && is_ack)packet_ready = true; //For reading request, ACK lost
+          if(client_error_applied && packet_ready && read){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For reading request, ACK lost
+          
+          if(!packet_lost){
                if(!invaild_tid){
-                   if(!packet_lost){
-                    try {
-                    	//ServerSocket.close();
-                    	//ServerSocket = new DatagramSocket(clientTID);
-                    	ServerSocket.send(sendPacket);
-                    } 
-                    catch (IOException e) {
-                         e.printStackTrace();
-                         System.exit(1);
+                   if(!packet_lost_lock){
+                        try {
+                            //ServerSocket.close();
+                            //ServerSocket = new DatagramSocket(clientTID);
+                            ServerSocket.send(sendPacket);
+                        } 
+                        catch (IOException e) {
+                             e.printStackTrace();
+                             System.exit(1);
+                        }
+                        if(!write_last_packet)initial_packet = false;
+                        System.out.println("Error Simulator: packet sent");
+                        System.out.println("-----------------------------------------------------------------------\n");
                     }
-                    if(!write_last_packet)initial_packet = false;
-                    System.out.println("Error Simulator: packet sent");
-                    System.out.println("-----------------------------------------------------------------------\n");
-                   }
-                    if(read_last_packet){initial_packet = true;error_list.remove(0);}
-                    else{
-                                buffer = new byte[516];
-                                receivePacket = new DatagramPacket(buffer, buffer.length);
-                                System.out.println("Error Simulator: Waiting for server...");
-                                try {
-                                    ServerSocket.receive(receivePacket);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                    System.exit(1);
-                                }
-                   }
+                   packet_lost_lock=false;
+                        if(read_last_packet){initial_packet = true;error_list.remove(0);}
+                        else{
+                                    buffer = new byte[516];
+                                    receivePacket = new DatagramPacket(buffer, buffer.length);
+                                    System.out.println("Error Simulator: Waiting for server...");
+                                    try {
+                                        ServerSocket.receive(receivePacket);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                        System.exit(1);
+                                    }
+                        }
+                   
                }
-               else{      System.out.println("never touch here");
+               else{     
                         try {
                             ErrorSocket = new DatagramSocket();
                         } catch (SocketException e) {
@@ -177,42 +186,48 @@ public class ErrorSim extends Thread{
                                     e.printStackTrace();
                                     System.exit(1);
                         }
+                        invaild_tid = false;
                 } 
-               		
-               		if(read_last_packet &&error_list.isEmpty()){System.out.println("------------------------Error List is Over Please ReEnter------------------------");break;}
-                    if(read_last_packet)break;
-                    server_PORT =  receivePacket.getPort();
-                    data = new byte[receivePacket.getLength()];
-                    System.arraycopy(receivePacket.getData(), 0, data, 0, data.length);
-                    error_packet = isErrorPacket(data);
-                    read_last_packet = isLast(data,read);
-                    displayPacket(receivePacket, "receive");
-                    packet_lost = false;
-                    if(server_error_applied)packet_lost = false;
-                    if(((read && is_data)||( write && is_ack)) && getPacketNumber(receivePacket.getData()) == error_packet_number && first_time_error) {
-                        System.out.println("\n--------Packet found. TO Client---------");
-                        error_code = error_code_number;
-                        server_error_applied = true;
-                        packet_lost = false;
-                        first_time_error = false;
-                    }
-                    else {error_code = 0;server_error_applied = false;first_time_error = true;}
-                    sendPacket = errorCode(error_code,data, receivePacket.getLength(), receivePacket.getAddress(), client_PORT,ClientSocket);
-                    /*  Sending the packet to Client    */
-               if(!packet_lost|| write){     
+               if(read_last_packet &&error_list.isEmpty()){System.out.println("------------------------Error List is Over Please ReEnter------------------------");break;}
+               if(read_last_packet)break;
+               server_ad = receivePacket.getAddress();
+               server_PORT =  receivePacket.getPort();
+               data = new byte[receivePacket.getLength()];
+               System.arraycopy(receivePacket.getData(), 0, data, 0, data.length);
+               error_packet = isErrorPacket(data);
+               read_last_packet = isLast(data,read);
+               displayPacket(receivePacket, "receive");
+               if(((read && is_data)||( write && is_ack)) && (getPacketNumber(receivePacket.getData()) == error_packet_number) && (first_time_error)) {
+                   System.out.println("\n--------Packet found. TO Client---------");
+                   error_code = error_code_number;
+                   server_error_applied = true;
+                   packet_lost = false;
+                   first_time_error = false;
+               }
+               else {error_code = 0;server_error_applied = false;}
+               sendPacket = errorCode(error_code,data, receivePacket.getLength(), client_ad, client_PORT,ClientSocket);
+               /*  Sending the packet to Client    */
+               if(!packet_lost){     
                     displayPacket(sendPacket, "send");
-                    	try {
-                    	 //ClientSocket = new DatagramSocket(serverTID);
-                         ClientSocket.send(sendPacket);
-                    	} catch (IOException e) {
-                    		e.printStackTrace();
-                    		System.exit(1);
-                    	}
-                    
+                        try {
+                         //ClientSocket = new DatagramSocket(serverTID);
+                         if(invaild_tid){ErrorSocket = new DatagramSocket(); ErrorSocket.send(sendPacket);invaild_tid = false;}
+                         else{ClientSocket.send(sendPacket);}
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            System.exit(1);
+                        }
                     System.out.println("Error Simulator: packet sent");
                     System.out.println("_______________________________________________________________________\n");
                 }
            }
+          if(packet_lost && is_ack && server_error_applied){packet_ready = true;}//For writing request, ACK lost
+          if(server_error_applied && packet_ready && write){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For writing request, ACK lost
+          
+          if(packet_lost&&client_error_applied && is_data ){packet_ready = true;}////For writing request, Data lost
+          if(client_error_applied && packet_ready && write){packet_lost = false;packet_ready = false;packet_lost_lock=true;}////For writing request, ACK lost
+          
+          if(packet_lost&&server_error_applied && !is_data && !is_ack)packet_lost = false;// for initial packet Lost
         }while(!write_last_packet|| error_packet);//!write_last_packet || !read_last_packet || !error_packet
     }
     private void disconnect(DatagramSocket ds){
@@ -315,7 +330,7 @@ public class ErrorSim extends Thread{
          byte[] blk1;
         if (error_code == 0){}
         else if(error_code == 1){
-            data[0] = 9;
+            data[0] = 0;
             data[1] = 9; 
         }
         else if(error_code == 2){
