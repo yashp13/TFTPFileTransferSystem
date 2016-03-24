@@ -27,6 +27,8 @@ public class Client {
     private static byte TWOBYTE 	 = 2;
     private static byte THREEBYTE	 = 3;
     private static byte FOURBYTE	 = 4;
+    private static byte FIVEBYTE	 = 5;
+    private static byte SIXBYTE	 = 6;
     private static int  MODE 		 = 0;
     private int TID;
     private int blockNumber = 1;
@@ -78,12 +80,15 @@ public class Client {
         byte threeByte = 3;
             //check if first byte is zero
             //DATA format 0 3 | X X | n bytes - that is a zero byte then a 3 byte then two other bytes then n bytes of data
+        	//check if packet size is 516
+        if(t.length <= 516){
             if(t[0] == ZEROBYTE){
                 if(t[1] == threeByte){
                    return true;
                     
+                }
             }
-            }
+        }
             return false;
     }
         
@@ -105,10 +110,21 @@ public class Client {
      * @param packet of type DatagramPacket
      * @return boolean 
      */
+    
+    private boolean isErrorPacket(DatagramPacket packet){    	
+    	//Check if the Packet has the error format 0501<StringMessage>0
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE){
+    		
+    		return true;
+    	}
+		return false;
+    }
+    
+    
     //if error code is 4
     private boolean isErrorPacketCodeFour(DatagramPacket packet){    	
     	//Check if the Packet has the error format 0501<StringMessage>0
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 4 ){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == FOURBYTE ){
     		
     		return true;
     	}
@@ -118,7 +134,7 @@ public class Client {
     //if error code is 5
     private boolean isErrorPacketCodeFive(DatagramPacket packet){    	
     	//Check if the Packet has the error format 0501<StringMessage>0
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 5){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == FIVEBYTE){
     		
     		return true;
     	}
@@ -127,7 +143,7 @@ public class Client {
     
     //if error code is 3
     private boolean isErrorPacketCodeThree(DatagramPacket packet){
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 3){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == THREEBYTE){
     		return true;
     	}
     	return false;
@@ -135,28 +151,28 @@ public class Client {
     
     //if error code is 2
     private boolean isErrorPacketCodeTwo(DatagramPacket packet){
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 2){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == TWOBYTE){
     		return true;
     	}
     	return false;
     }
     
     private boolean isErrorPacketCodeSix(DatagramPacket packet){
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 6){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == SIXBYTE){
     		return true;
     	}
     	return false;
     }
     
     private boolean isErrorPacketCodeOne(DatagramPacket packet){
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0 && packet.getData()[3] == 1){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE && packet.getData()[3] == ONEBYTE){
     		return true;
     	}
     	return false;
     }
     
     private int getErrorCode(DatagramPacket packet){
-    	if(packet.getData()[0] == 0 && packet.getData()[1] == 5 && packet.getData()[2] == 0){
+    	if(packet.getData()[0] == ZEROBYTE && packet.getData()[1] == FIVEBYTE && packet.getData()[2] == ZEROBYTE){
     		return packet.getData()[3] & 0xff;
     	}
     	return -1;
@@ -272,7 +288,7 @@ public class Client {
     }
     
     ///--------------------------------------------------------------------------------------------------------------------------
-
+    // Sends error for different TID
    private void differentTIDError(){
 	   byte[] err = null;
 	   String errString = "Different TID received. Error Code 5.";
@@ -283,7 +299,46 @@ public class Client {
 	   errBuf[2] = 0;
 	   errBuf[3] = 5;
 	   System.arraycopy(err, 0, errBuf, 4, err.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), TID);
+	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
+	   try {
+		   TransmitPacket(errorPacket);
+	   } catch (IOException e) {
+		   // TODO Auto-generated catch block
+		   e.printStackTrace();
+	   }
+   }
+   
+   //Sends error code 4 for wrong block number
+   private void sendErrWrongBlockNumber(){
+	   byte[] err = null;
+	   String errString = "Invalid TFTP Operation Wrong Block Number. ERROR CODE 4";
+	   err = errString.getBytes();
+	   byte[] errBuf = new byte[err.length + 4];
+	   errBuf[0] = ZEROBYTE;
+	   errBuf[1] = FIVEBYTE;
+	   errBuf[2] = ZEROBYTE;
+	   errBuf[3] = FOURBYTE;
+	   System.arraycopy(err, 0, errBuf, 4, err.length);
+	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
+	   try {
+		   TransmitPacket(errorPacket);
+	   } catch (IOException e) {
+		   // TODO Auto-generated catch block
+		   e.printStackTrace();
+	   }
+   }
+   
+   private void sendErrWrongPackSize(){
+	   byte[] err = null;
+	   String errString = "Invalid TFTP Operation Wrong Packet Size. ERROR CODE 4";
+	   err = errString.getBytes();
+	   byte[] errBuf = new byte[err.length + 4];
+	   errBuf[0] = ZEROBYTE;
+	   errBuf[1] = FIVEBYTE;
+	   errBuf[2] = ZEROBYTE;
+	   errBuf[3] = FOURBYTE;
+	   System.arraycopy(err, 0, errBuf, 4, err.length);
+	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
 	   try {
 		   TransmitPacket(errorPacket);
 	   } catch (IOException e) {
@@ -312,7 +367,7 @@ public class Client {
    }
     
     private void ObtainPacketWithTimeoutGiveup(){
-        byte data[] = new byte[516];
+        byte data[] = new byte[518]; //518 to check for invalid larger packets
         receivePacket = new DatagramPacket(data, data.length);
         
         try {
@@ -332,29 +387,35 @@ public class Client {
                  initialPack = false;
                  System.out.println("server: " + serverTID + "  this TID: " + receivePacket.getPort());
                  if(receivePacket.getPort() != serverTID){
-                	 differentTIDError();
+                	 //differentTIDError();
+                	 System.out.println("CLIENT: --------------------------------Different TID received\n" );
+                 	restartApplication();
                  }
                  
                  // make a be equal to the current received block number
                  int a = ((receivePacket.getData()[2] <<8) &0xff00) +( receivePacket.getData()[3] & 0xff);
                  
-                 /*if(a < blockNumber){
-                	 System.out.println("Duplicate Packet.");
-                	 break;
-                 }*/
+                 //If not error packet check block number
+                 if(!isErrorPacket(receivePacket) && a > blockNumber){
+                	 System.out.println("Client: Invalid Block Number-----------Error Code 2");
+                	 System.out.println("CLIENT: Shutting Down Transfer");
+                	 sendErrWrongBlockNumber();
+                	 restartApplication();
+                 }
                  
-                 /*if( a < blockNumber -1){ // block number recieved less than expected
+                 if(!isErrorPacket(receivePacket)&& a < blockNumber){ // block number recieved less than expected
                	  i = 0; // restart count even if incorrect packet was received
                	  System.out.println("Client: --------------------Duplicate Packet Received-----------------"); 
+               	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
                	  System.out.println("Block Number Received: " + a); 
-               	  System.out.println("Block Number Expected: " + (blockNumber-1)); 
+               	  System.out.println("Block Number Expected: " + (blockNumber)); 
                	  continue;
-                 }*/
+                 }
                  
                  //client sends block no equal to received block number every time
-                 if(a != blockNumber){
-                	 blockNumber =a;
-                 }
+//                 if(a != blockNumber){
+//                	 blockNumber =a;
+//                 }
                  
                  
                  //Display Packet if Appropriate Packet Received
@@ -382,7 +443,7 @@ public class Client {
     
     ///------------------------------------------------------------------------------------------------------------------------
     private void ObtainPacketWithTimeoutRetransmit(){
-    	byte data[] = new byte[516];
+    	byte data[] = new byte[518]; //518 to check for invalid larger packets
         receivePacket = new DatagramPacket(data, data.length);
         
           
@@ -400,22 +461,44 @@ public class Client {
         	try {//Wait for Packet from server, Block until packet is received or timed out
                 sendReceiveSocket.receive(receivePacket);
               //setting the serverTID to the TID of the initial packet
-                if(initialPack) serverTID = receivePacket.getPort();
+                if(initialPack) {
+                	serverTID = receivePacket.getPort();
+                }
                 initialPack = false;
                 
                 if(receivePacket.getPort() != serverTID){
-                	differentTIDError();
+               	 //differentTIDError();
+               	 System.out.println("CLIENT: --------------------------------Different TID received\n" );
+                	restartApplication();
                 }
                 
+              
+               
+                DisplayPacketInfo(receivePacket, receivePacket.getData(), "S");
                 //Checking for error packets
                 if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)
-                		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket) || isErrorPacketCodeOne(receivePacket)){
+                		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket) || isErrorPacketCodeOne(receivePacket))
+                {
                 	System.out.println("CLIENT: -----------------ERROR CODE " + getErrorCode(receivePacket) +" RECEIVED");
                 	DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
                 	System.out.println("CLIENT: -----------------SHUTTING DOWN and Restarting Client");
                 	//in.close();
 
                 	restartApplication();
+                }
+                
+                
+                if(!isACK(receivePacket)){
+                	if(receivePacket.getLength() > 4){
+                		System.out.println(" CLIENT: ----------Invalid Packet Size");
+                    	DisplayPacketInfo(receivePacket, receivePacket.getData(), "S");
+                    	sendErrWrongPackSize();
+                    	restartApplication();
+                	}else{
+                	System.out.println(" CLIENT: ----------Invalid Opcode Received");
+                	DisplayPacketInfo(receivePacket, receivePacket.getData(), "S");
+                	restartApplication();
+                	}
                 }
                 
                 // if block number received is less than what is expected ignore and wait for the next one
@@ -430,11 +513,13 @@ public class Client {
             	  System.out.println("Block Number Expected: " + (blockNumber-1)); 
             	  continue;
               }
-              if(a > blockNumber -1 || receivePacket.getLength() > 4){// block number received greater than expected restart
+              if(a > blockNumber -1 || receivePacket.getLength() > 4)
+              {// block number received greater than expected restart
             	  i = 0; // restart count even if incorrect packet was received
             	  System.out.println("Client: --------------------Error Code 4 received. Shutting Down-----------------"); 
             	  System.out.println("Block Number Received: " + a); 
             	  System.out.println("Block Number Expected: " + (blockNumber-1)); 
+            	  sendErrWrongBlockNumber();
             	  restartApplication();
               }
               
@@ -504,7 +589,7 @@ public class Client {
     			System.out.println("\nClient: WILL WRITE DATA TO SERVER!");
     			sendPacket = CreateRequestPacket("w", input.get("w")[FILENAME], TID);
     			TransmitPacket(sendPacket); //Send WRQ Request Packet
-    			ObtainPacketWithTimeoutGiveup();
+    			ObtainPacketWithTimeoutRetransmit();
                 WriteRequest(input.get("w")[FILENAME],input.get("w")[FILELOCATION],receivePacket.getPort());
 			} catch (UnknownHostException e) {
 				System.out.println("ERROR: UNABLE TO CREATE WRQ REQUEST PACKET");
@@ -660,6 +745,7 @@ public class Client {
     @SuppressWarnings("unused")
 	private void WriteRequest(String filename, String fileLocation, int PORT) throws FileNotFoundException, IOException{
         
+    	
         File file = new File(fileLocation);
         BufferedInputStream  in = new BufferedInputStream (new FileInputStream(file));
         byte[] data = new byte[512];
@@ -672,29 +758,33 @@ public class Client {
         
         /* Read the file in 512 byte chunks. */
         while (done){//(n = in.read(data)) != -1) {
+        	
+            if(file_size < 512){            	
+            	done = false;
+            	System.out.println("at stopping point");
+            	//break;
+            } 
         	in.read(data);
+        	//Adjust the file size accordingly
         	if(file_size >512){
         		message = new byte[516]; 
-        		file_size = file_size - 512;   
-            }else if (file_size > 0 || file_size == 512){
-            	file_size -= file_size;
+            }else if (file_size > 0){
             	message = new byte[file_size+4]; 
-            	}else {
+            }else {
             		message = new byte [4];
-            		 message[0]=	ZEROBYTE;							//Setup Byte structure 
+            		 message[0]= ZEROBYTE;							//Setup Byte structure 
                      message[1]= THREEBYTE;							//03 Data opcode
                      message[2]= (byte)((blockNumber >> 8) % 0xffff);//BlockNumber shift when 128	
                      message[3]= (byte)(blockNumber % 0xffff);		//Block number
                      blockNumber ++;	
                      
-                     
+                   
                      sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), PORT);
-                     
-                     TransmitPacket(sendPacket); 					//Send the data packet
+                     TransmitPacket(sendPacket); 					//Send the request data packet
                      
                      
                      System.out.println("Client: Waiting for Packet.");
-                     
+                    
                      //retransmission loop, keep going until appropriate packet is received
                      ObtainPacketWithTimeoutRetransmit();
             		
@@ -702,7 +792,8 @@ public class Client {
                      System.out.println("WRQ: New Transfer Started");
                      restartApplication();
                      
-            	}
+            }
+        	file_size = file_size - 512;
             message[0]=	ZEROBYTE;							//Setup Byte structure 
             message[1]= THREEBYTE;							//03 Data opcode
             message[2]= (byte)((blockNumber >> 8) % 0xffff);//BlockNumber shift when 128	
@@ -712,16 +803,14 @@ public class Client {
                 message[i+4] = data[i];
             }
              
+       
             sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), PORT);
             TransmitPacket(sendPacket); 					//Send the data packet
-            
-            
+
             System.out.println("Client: Waiting for Packet.");     
+            //retransmission loop, keep going until appropriate packet is received
             
-          
-            
-            
-            
+            ObtainPacketWithTimeoutRetransmit();
             
             if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)
             		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket)){
@@ -734,13 +823,14 @@ public class Client {
             }   
             
           //retransmission loop, keep going until appropriate packet is received
-            ObtainPacketWithTimeoutRetransmit();
+            //ObtainPacketWithTimeoutRetransmit();
             
-            if(message.length < 516){            	
-            	done = false;
-            	System.out.println("at stopping point");
-            	break;
-            }
+           // if(message.length < 516){            	
+           // 	done = false;
+           // 	System.out.println("at stopping point");
+           // 	//break;
+           // }
+            System.out.println(file_size); //TODO remove later
         } 
         in.close(); 
         System.out.println("WRQ: -----------Write Request, Completed, Starting new Transfer");
@@ -769,12 +859,9 @@ public class Client {
          
          //if file doesnt exist make it again
          if (!outputFile.exists()) {
-				//try{
+		
 					outputFile.createNewFile();
-				/*}catch(IOException e){
-					System.out.println("-----------------ERROR CODE 2: ACCESS VIOLATION-----------------");
-					restartApplication();
-				}*/
+			
 			}
 
          FileOutputStream fop = new FileOutputStream(outputFile);
@@ -802,7 +889,8 @@ public class Client {
              ack[2]= (byte)((blockNumber >> 8) % 0xffff);//BlockNumber shift when 128	
              ack[3]= (byte)(blockNumber % 0xffff);		//Block number
              
-             if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket)){
+             if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)
+             		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket) || isErrorPacketCodeOne(receivePacket)){
             	System.out.println("CLIENT: -----------------ERROR RECEIVED");
              	System.out.println("CLIENT: -----------------SHUTTING DOWN TRANSFER");
              	fop.close();
@@ -811,27 +899,7 @@ public class Client {
              	System.out.println("STARTING NEW TRANSFER");
              	restartApplication();
              }
-        /*     if(isErrorPacketCodeFive(receivePacket)){			//IF error in packet resend data
-               	 
-              	System.out.println("CLIENT: -----------------RESENDING PREVIOUS PACKET");
-              	blockNumber --;
-              	 
-              	 ack[2]= (byte)((blockNumber >> 8) % 0xffff);//BlockNumber shift when 128	
-                 ack[3]= (byte)(blockNumber % 0xffff);		//Block number
-                 
-                 try {
-                	 sendPacket = new DatagramPacket(ack, ack.length, InetAddress.getLocalHost(), receivePacket.getPort() );
-                  } catch (UnknownHostException e) {
-                     e.printStackTrace();
-                     System.exit(1);
-                  }
-              	
-              	TransmitPacket(sendPacket);					//Resend previous packet
-              	  
-              	blockNumber ++;
-              	continue;
-              }
-             */
+        
              
              try {
                  sendPacket = new DatagramPacket(ack, ack.length, InetAddress.getLocalHost(), receivePacket.getPort());
@@ -850,10 +918,7 @@ public class Client {
              //trim byte array to only include the last 512 bytes
              byte[] tw =  Arrays.copyOfRange(t,4 ,receivePacket.getLength());
              
-           /*  if(a != blockNumber-1){
-             	System.out.println(a + " " + blockNumber);
-             	System.out.println("CLIENT: -----------------INCORRECT BLOCK NUMBER FROM ACK");
-             }*/
+         
              
          //check if proper data blocks are received
              if(isDATA(t)){
@@ -864,34 +929,20 @@ public class Client {
             		 restartApplication();
             	 }
              }else {
-            	 System.out.println("Error Code: " + errorCode);
-          	   System.out.println("Error: Unexpected Packet");
+            	 System.out.println("Error Found");
+          	   	System.out.println("Error: Invalid Packet Size Code 4");
+          	   	sendErrWrongPackSize();
+          	   System.out.println("CLIENT: -----------------Deleting: " + outputFile);
+          	 	outputFile.delete();
+          	 	System.out.println("STARTING NEW TRANSFER");
+          	 	restartApplication();
              }
              
                 
              
               System.out.println("==================================================================================");    
         	 
-             /*
-                try {
-                     sendPacket = new DatagramPacket(ack, ack.length, InetAddress.getLocalHost(), receivePacket.getPort());
-                  } catch (UnknownHostException e) {
-                     e.printStackTrace();
-                     System.exit(1);
-                  }
-                
-                 
-                //send the datagram packet
-                 try {
-                      sendReceiveSocket.send(sendPacket);
-                   } catch (IOException e) {
-                      e.printStackTrace();
-                      System.exit(1);
-                   }
-                   System.out.println("Client: Acknowledgement Packet sent.\n");
-             
-                   System.out.println("==================================================================================");
-             */
+           
                 
                    //check if its the last data packet
                    //break out of loop
@@ -923,3 +974,5 @@ public class Client {
     }
 
 }
+
+   

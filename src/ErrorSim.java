@@ -17,6 +17,8 @@ public class ErrorSim extends Thread{
     private boolean packet_lost = false;
     private boolean read = false;
     private boolean write = false;
+    private boolean is_ack = false;
+    private boolean is_data = false;
     private InetAddress server_ad;
     private int server_PORT;
     private InetAddress client_ad;
@@ -59,8 +61,6 @@ public class ErrorSim extends Thread{
     public void run(){
         /*  Receive the packet from Client  */
         boolean packet_ready = false;
-        boolean is_ack = false;
-        boolean is_data = false;
         boolean client_error_applied = false; 
         boolean server_error_applied = false; 
         boolean read_last_packet = false;
@@ -68,6 +68,8 @@ public class ErrorSim extends Thread{
         boolean error_packet = false;
         boolean finished = false;
         boolean packet_lost_lock = false;
+        is_ack = false;
+        is_data = false;
         do{
             byte buffer[] = new byte[516];
             byte[] data;
@@ -372,7 +374,7 @@ public class ErrorSim extends Thread{
             data = error_data;
         }
         else if(error_code == 7){invaild_tid = true;}
-        else if(error_code == 8){new ErrorSimHolder(new DatagramPacket(data,data.length,address,PORT),src,delay).start();}
+        else if(error_code == 8){new ErrorSimHolder(new DatagramPacket(data,data.length,address,PORT),src,delay,read,write,is_ack,is_data).start();}
         else if(error_code == 9){packet_lost = true;}
         else if(error_code == 10){
             try {
