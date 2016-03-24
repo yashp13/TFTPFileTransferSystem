@@ -229,7 +229,7 @@ public class ErrorSim extends Thread{
           if(packet_lost&&client_error_applied && is_data ){packet_ready = true;}////For writing request, Data lost
           if(client_error_applied && packet_ready && write){packet_lost = false;packet_ready = false;packet_lost_lock=true;}////For writing request, ACK lost
           
-          if(packet_lost&&server_error_applied && !is_data && !is_ack)packet_lost = false;// for initial packet Lost
+          if(packet_lost&&client_error_applied && !is_data && !is_ack)packet_lost = false;// for initial packet Lost
         }while(!write_last_packet|| error_packet);//!write_last_packet || !read_last_packet || !error_packet
     }
     private void disconnect(DatagramSocket ds){
