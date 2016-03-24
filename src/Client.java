@@ -474,7 +474,7 @@ public class Client {
                 
               
                
-                DisplayPacketInfo(receivePacket, receivePacket.getData(), "S");
+                //DisplayPacketInfo(receivePacket, receivePacket.getData(), "S");
                 //Checking for error packets
                 if(isErrorPacketCodeFour(receivePacket) || isErrorPacketCodeFive(receivePacket) || isErrorPacketCodeThree(receivePacket)
                 		|| isErrorPacketCodeTwo(receivePacket) || isErrorPacketCodeSix(receivePacket) || isErrorPacketCodeOne(receivePacket))
@@ -830,7 +830,7 @@ public class Client {
            // 	System.out.println("at stopping point");
            // 	//break;
            // }
-            System.out.println(file_size); //TODO remove later
+            //System.out.println(file_size); //TODO remove later
         } 
         in.close(); 
         System.out.println("WRQ: -----------Write Request, Completed, Starting new Transfer");
