@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URISyntaxException;
@@ -35,7 +36,8 @@ public class Client {
     private int shutdown;
     private int serverTID;
     private boolean initialPack = true;
-   
+    protected static InetAddress add;
+    protected static InetAddress swag;
   
     private int errorCode;
     private DatagramSocket sendReceiveSocket;
@@ -47,6 +49,7 @@ public class Client {
     public Client(){
         try {
             sendReceiveSocket = new DatagramSocket();
+           // sendReceiveSocket.bind(new InetSocketAddress(InetAddress.getByName("134.117.59.51"),sendReceiveSocket.getLocalPort()));
             //initialPack = true;
         } catch (SocketException se){
             se.printStackTrace();
@@ -56,7 +59,7 @@ public class Client {
     
     //------------------------------------------------------------------------------------------------------------------------
     /**
-     * Identifiy if the DatagramPacket received was an ACK.
+     * Identify if the DatagramPacket received was an ACK.
      * ACK format 0 4 X X - that is a zero byte then a 4 byte then two other bytes.
      * 
      * @param packet of type DatagramPacket is packet to check
@@ -182,46 +185,16 @@ public class Client {
     
     public void restartApplication()
     {
-      sendReceiveSocket.close();
-      Client C = new Client();
-      C.ClientAlgorithm();
+      //sendReceiveSocket.close();
+      //Client C = new Client();
+       blockNumber = 1;
+       initialPack = true;
+    
+      blockNumber = 1;
+      ClientAlgorithm();
       System.exit(0);
     }
     //close the socket and restart transfer
-    private void endTransferRestart(){
-    	
-   
-    	
-    	////////////////////
-    //	System.out.println("Shutting Down Successfully");
-    //	System.exit(0);
-    	////////////////////////
-    	Scanner sc2 = new Scanner(System.in);
-           
-     
-    	while(true){ //making sure mode is either 1 or 2
-    		System.out.print("Enter 1 for Shutdown or 2 for Restart: ");
-    		while(!sc2.hasNextInt()){//only accept integers
-    			System.out.print("Enter 1 for Shutdown or 2 for Restart: ");
-    			sc2.next();
-    		}//Update Mode once integer is received
-    		shutdown = sc2.nextInt();
-    		if(shutdown == 1) { 
-    			sendReceiveSocket.close();
-    			Client C = new Client();
-    			C.ClientAlgorithm();
-    			System.exit(0);
-    		}else if(shutdown == 2) {
-    			System.out.println("Shutting Down Successfully");
-    			sendReceiveSocket.close();
-    			System.exit(0);
-    		}
-    	}
-    	//sc2.nextLine();
-    	
-    }	
-    
-    
     
     //------------------------------------------------------------------------------------------------------------------------
     /**
@@ -268,12 +241,13 @@ public class Client {
             
         //CONSTRUCT DATAGRAM PACKET TO BE SENT
         request = Arrays.copyOfRange(request,0,lastArrayIndex);	//Trim relevant data int array
-       	requestPacket = new DatagramPacket(request, request.length, InetAddress.getLocalHost(), PORT);
+       
+       	requestPacket = new DatagramPacket(request, request.length, add, PORT);
     	return requestPacket;
     }
     
     //--------------------------------------------------------------------------------------------------------------------------
-    
+    //134.117.59.52
     /**
      * Sends a DatagramPacket through the DatagramSocket created
      * in the Client Constructor
@@ -294,12 +268,12 @@ public class Client {
 	   String errString = "Different TID received. Error Code 5.";
 	   err = errString.getBytes();
 	   byte[] errBuf = new byte[err.length + 4];
-	   errBuf[0] = 0;
-	   errBuf[1] = 5;
-	   errBuf[2] = 0;
-	   errBuf[3] = 5;
+	   errBuf[0] = ZEROBYTE;
+	   errBuf[1] = FIVEBYTE;
+	   errBuf[2] = ZEROBYTE;
+	   errBuf[3] = FIVEBYTE;
 	   System.arraycopy(err, 0, errBuf, 4, err.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
+	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), serverTID);
 	   try {
 		   TransmitPacket(errorPacket);
 	   } catch (IOException e) {
@@ -357,7 +331,7 @@ public class Client {
 	   errBuf[2] = 0;
 	   errBuf[3] = 2;
 	   System.arraycopy(tempBuf, 0, errBuf, 4, tempBuf.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, InetAddress.getLocalHost(), TID);
+	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, add, TID);
 	   try {
 		   TransmitPacket(errorPacket);
 	   } catch (IOException e) {
@@ -376,20 +350,22 @@ public class Client {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+        
         for(int i = 0 ; i <= 4 ; i ++){
-        	if(i<4){
-        	   
+        	if(i<4){  
              try {//Wait for Packet from server, Block until packet is received
-            	 System.out.println("Client: Waiting for Packet.");  
+            	 System.out.println("CLIENT: ---------------Waiting For New Packet\n" );
                  sendReceiveSocket.receive(receivePacket);  
                  //setting the serverTID to the TID of the initial packet
                  if(initialPack) serverTID = receivePacket.getPort();
                  initialPack = false;
+                 
                  System.out.println("server: " + serverTID + "  this TID: " + receivePacket.getPort());
                  if(receivePacket.getPort() != serverTID){
-                	 //differentTIDError();
-                	 System.out.println("CLIENT: --------------------------------Different TID received\n" );
-                 	restartApplication();
+                 	 System.out.println("CLIENT: --------------------------------Different TID received...Ignored\n" );
+                   	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
+                	 differentTIDError();
+                 	continue; //ignored packet
                  }
                  
                  // make a be equal to the current received block number
@@ -397,20 +373,33 @@ public class Client {
                  
                  //If not error packet check block number
                  if(!isErrorPacket(receivePacket) && a > blockNumber){
-                	 System.out.println("Client: Invalid Block Number-----------Error Code 2");
+                	 System.out.println("Client: Invalid Block Number-----------Error Code 4");
+                	 System.out.println("Block Number Received: " + a); 
+                	  System.out.println("Block Number Expected: " + (blockNumber)); 
                 	 System.out.println("CLIENT: Shutting Down Transfer");
                 	 sendErrWrongBlockNumber();
                 	 restartApplication();
                  }
                  
-                 if(!isErrorPacket(receivePacket)&& a < blockNumber){ // block number recieved less than expected
+                 //if block number is less than expected then resend ack with received block number
+                 
+                if(!isErrorPacket(receivePacket)&& a < blockNumber){ // block number recieved less than expected
                	  i = 0; // restart count even if incorrect packet was received
-               	  System.out.println("Client: --------------------Duplicate Packet Received-----------------"); 
-               	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
-               	  System.out.println("Block Number Received: " + a); 
-               	  System.out.println("Block Number Expected: " + (blockNumber)); 
-               	  continue;
-                 }
+             	  System.out.println("Client: --------------------Duplicate Packet Received-----------------"); 
+             	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
+              	  System.out.println("Block Number Received: " + a); 
+             	  System.out.println("Block Number Expected: " + (blockNumber)); 
+             	 System.out.println("Resending ack with: " + a); 
+             	 byte[] bno = new byte[4];
+             	  bno[0]= ZEROBYTE;//BlockNumber shift when 128	
+                  bno[1]= FOURBYTE;		//Block number
+             	  bno[2]= (byte)(((a) >> 8) % 0xffff);//BlockNumber shift when 128	
+                  bno[3]= (byte)((a) % 0xffff);		//Block number
+             	 
+             	sendPacket = new DatagramPacket(bno, bno.length, add, receivePacket.getPort());
+             	 TransmitPacket(sendPacket);
+              	  break;
+               }
                  
                  //client sends block no equal to received block number every time
 //                 if(a != blockNumber){
@@ -459,6 +448,7 @@ public class Client {
         for(int i = 0 ; i <= 4 ; i++){
         	if(i <= 3 ){
         	try {//Wait for Packet from server, Block until packet is received or timed out
+        		 System.out.println("CLIENT: ---------------Waiting For New Packet\n" );
                 sendReceiveSocket.receive(receivePacket);
               //setting the serverTID to the TID of the initial packet
                 if(initialPack) {
@@ -468,8 +458,10 @@ public class Client {
                 
                 if(receivePacket.getPort() != serverTID){
                	 //differentTIDError();
-               	 System.out.println("CLIENT: --------------------------------Different TID received\n" );
-                	restartApplication();
+               	 System.out.println("CLIENT: --------------------------------Different TID received...Ignored\n" );
+               	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
+               	 differentTIDError();
+                	continue;  //ignore and wait for next packet
                 }
                 
               
@@ -652,6 +644,7 @@ public class Client {
         String filename;   
         String file_location;
         
+        
         //Ask user for the mode
         sc = new Scanner(System.in);
         while(true){ //making sure mode is either 1 or 2
@@ -673,9 +666,15 @@ public class Client {
           
             if(MODE == 1) { 
             	TID = 69;
+            	//Get IP address of Server
+            	if(initialPack && add == null)
+            		getIP();
             	break;//SetNormalMode
             }else if(MODE == 2) {
             	TID = 61;
+            	//Get IP address of Errorsim
+            	if(initialPack && add == null)
+            		getIP();
             	break;//Set Testing Mode
             }else if(MODE == 3) {
             	sendReceiveSocket.close();
@@ -729,7 +728,46 @@ public class Client {
         return res;
     }
     
+    private void getIP(){
+    	System.out.print("Enter Receiver's IP Address or 'local' for local host: ");
+		String IP; 
+		//IP = sc.nextLine();
+		Scanner sc2 = new Scanner(System.in);
+		while(true){
+			IP = sc2.nextLine();
+			if(IP.equalsIgnoreCase("local")){break;}
+    	  
+			String[] parts = IP.split("\\.");
+			if( parts.length == 4 ) {
+				break;
+			}else{
+				System.out.print("Invalid IP Format. Re-enter: ");
+			}
+		}
+		//Make inetaddress with IP given if not throw exception 
+		if(IP.equalsIgnoreCase("local")){
+			try {
+				add = InetAddress.getLocalHost();
+			} catch (UnknownHostException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		else{
+			try {
+				add = InetAddress.getByName(IP);
+			} catch (UnknownHostException e) {
+				// TODO Auto-generated catch block
+				//e.printStackTrace();
+				System.out.print("InetAddress creation Failed\n");
+				System.out.print("Restarting Client\n");
+				restartApplication();
+			}
+		}
+    }
     
+    //-------------------------------------------------------------------------------------------------------------------------
+   
   
     ///--------------------------------------------------------------------------------------------------------------------------
     
@@ -779,11 +817,11 @@ public class Client {
                      blockNumber ++;	
                      
                    
-                     sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), PORT);
+                     sendPacket = new DatagramPacket(message, message.length, add, PORT);
                      TransmitPacket(sendPacket); 					//Send the request data packet
                      
                      
-                     System.out.println("Client: Waiting for Packet.");
+                
                     
                      //retransmission loop, keep going until appropriate packet is received
                      ObtainPacketWithTimeoutRetransmit();
@@ -799,15 +837,15 @@ public class Client {
             message[2]= (byte)((blockNumber >> 8) % 0xffff);//BlockNumber shift when 128	
             message[3]= (byte)(blockNumber % 0xffff);		//Block number
             blockNumber ++;									//Increment the block number each iteration
-            for(int i = 0; i < message.length-5; i++ ){
+            for(int i = 0; i < message.length-4; i++ ){
                 message[i+4] = data[i];
             }
              
        
-            sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), PORT);
+            sendPacket = new DatagramPacket(message, message.length, add, PORT);
             TransmitPacket(sendPacket); 					//Send the data packet
 
-            System.out.println("Client: Waiting for Packet.");     
+           
             //retransmission loop, keep going until appropriate packet is received
             
             ObtainPacketWithTimeoutRetransmit();
@@ -901,12 +939,9 @@ public class Client {
              }
         
              
-             try {
-                 sendPacket = new DatagramPacket(ack, ack.length, InetAddress.getLocalHost(), receivePacket.getPort());
-              } catch (UnknownHostException e) {
-                 e.printStackTrace();
-                 System.exit(1);
-              }
+           
+              sendPacket = new DatagramPacket(ack, ack.length, add, receivePacket.getPort());
+             
              
               TransmitPacket(sendPacket);
              byte t[] = receivePacket.getData();
