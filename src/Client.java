@@ -662,19 +662,32 @@ public class Client {
                 
             }//Update Mode once integer is received
            
-            	MODE = sc.nextInt();
+            MODE = sc.nextInt();
           
             if(MODE == 1) { 
             	TID = 69;
             	//Get IP address of Server
             	if(initialPack && add == null)
             		getIP();
+            	else{
+            		Scanner newshit = new Scanner(System.in);
+            		System.out.print("Do you want to change the Server's IP (y/n)? ");
+                	if(newshit.nextLine().equalsIgnoreCase("y")) 
+                		getIP();
+            	}            	
             	break;//SetNormalMode
             }else if(MODE == 2) {
             	TID = 61;
             	//Get IP address of Errorsim
             	if(initialPack && add == null)
             		getIP();
+            	else{
+            		Scanner newshit2 = new Scanner(System.in);
+            		System.out.print("Do you want to change the Server's IP (y/n)? ");
+            		String x = newshit2.nextLine();
+                	if(x.equalsIgnoreCase("y")) 
+                		getIP();
+            	}
             	break;//Set Testing Mode
             }else if(MODE == 3) {
             	sendReceiveSocket.close();
