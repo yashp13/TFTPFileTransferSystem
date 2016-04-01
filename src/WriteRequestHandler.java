@@ -202,10 +202,13 @@ public class WriteRequestHandler {
 			        	}
 			        	
 			        	numPrevBlockReceived = 0;
-			        	
-			        	System.out.println("WRR: Received OpCode:" + rcvHanlder.getPkgOpCode(dataBuf) + ", Block:" + curBlock + ", Data Length:" + receivedPackageDataLen);
-				        System.out.println("WRR:          Local port(Host TID):" + rcvHanlder.transferSocket.getLocalPort() + ", remote port(remote TID):" + packet.getPort());						        	
-			        
+			        	receivedPackageDataLen = packet.getLength();
+			        	System.out.println("WRR: Received OpCode:" + rcvHanlder.getPkgOpCode(dataBuf) + ", Block:" + curBlock + ", Packet Length:" + receivedPackageDataLen);
+				        System.out.println("WRR:          Local port(Host TID):" + rcvHanlder.transferSocket.getLocalPort() + " local IP: " + rcvHanlder.transferSocket.getLocalAddress());						        	
+				        System.out.println("WRR:          remote port(remote TID):" + packet.getPort() + ", remote IP: " + packet.getAddress());
+				        
+				        rcvHanlder.printContents(packet);
+				        
 			        	//write to file
 				        byte[] wrBuf = Arrays.copyOfRange(dataBuf, 4, receivedPackageDataLen);		        
 			        	Boolean wrResultOk = writeToFile(wrBuf, receivedPackageDataLen - 4);
@@ -225,7 +228,7 @@ public class WriteRequestHandler {
 		        	
 			        	packet = new DatagramPacket(sendBuf, sendLen, remoteIpAddress, remotePort);
 			        	rcvHanlder.transferSocket.send(packet);	
-			        	System.out.println("WRR:          Sent ACK back to client.");
+			        	System.out.println("\nWRR:          Sent ACK back to client. OpCode: 04, Block: " + rcvHanlder.getPkgBlock(sendBuf)+"\n");
 			        	
 				        expectedBlock = curBlock + 1;
 				        

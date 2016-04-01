@@ -265,10 +265,12 @@ public class ReadRequestHandler {
 	        		//    closeFileInputStream();
 			        //	break;
 		        	//}
-		        	
-		        	System.out.println("RRQ: Received ACK OpCode:" + opCode + ", Block:" + curBlock + ", Data Length:" + receivedPackageDataLen);
-			        System.out.println("RRQ:          Local port(Host TID):" + rcvHanlder.transferSocket.getLocalPort() + ", remote port(remote TID):" + packet.getPort());						        	
-		        	
+		        	receivedPackageDataLen = packet.getLength();
+		        	System.out.println("RRQ: Received ACK OpCode:" + opCode + ", Block:" + curBlock + ", Packet Length:" + receivedPackageDataLen);
+			        					        	
+			        System.out.println("WRR:          Local port(Host TID):" + rcvHanlder.transferSocket.getLocalPort() + " local IP: " + rcvHanlder.transferSocket.getLocalAddress());						        	
+			        System.out.println("WRR:          remote port(remote TID):" + packet.getPort() + ", remote IP: " + packet.getAddress());
+			        
 			        //transfer completed
 			        if(timeToBreak) {
 		        		
@@ -296,8 +298,10 @@ public class ReadRequestHandler {
 				        sendBuf[2] = (byte)((expectedBlock >> 8) & 0xff);
 				        sendBuf[3] = (byte)(expectedBlock & 0xff);
 				        
-				        System.out.println("RRQ: Send Block:" + expectedBlock + ", Data Length:" + sendLen + 4);
+				        System.out.println("RRQ: Send Block:" + expectedBlock + ", Data Length:" + sendLen);
+				        
 			        	packet = new DatagramPacket(sendBuf, sendLen + 4, remoteIpAddress, remotePort);
+			        	rcvHanlder.printContents(packet);
 			        	rcvHanlder.transferSocket.send(packet);	
 			        	
 			        } else {
