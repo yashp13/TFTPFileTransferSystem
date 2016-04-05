@@ -74,18 +74,19 @@ public class ErrorSim extends Thread{
         
         is_ack = false;
         is_data = false;
-        
+        invaild_tid = false;
         do{
             byte buffer[] = new byte[516];
             byte[] data;
             int error_code = 0;
-            invaild_tid = false;
             receivePacket = new DatagramPacket(buffer, buffer.length);
+  
+           if((client_error_applied || server_error_applied) && write)  invaild_tid = false;
            if(error_packet){initial_packet = true;error_list.remove(0);}
            if((write_last_packet || error_packet) ){break;}
-           if(!new_list)System.out.println("Next Error is Ready to Apply");
-           //!packet_lost||write
-           if(!packet_lost){
+           if(!new_list&&!error_list.isEmpty()&&initial_packet)System.out.println("Error is Ready to Apply");
+           if(!(packet_lost || (invaild_tid&&read))){
+
                try{
                    if(initial_packet){
                        new_list = false;
@@ -99,7 +100,8 @@ public class ErrorSim extends Thread{
                        is_ack = e.isAck(); 
                        is_data = e.isData();
                        delay = e.getDelay();
-                      
+                       server_error_applied = false;
+                       client_error_applied = false;
                        first_time_error = true;
                     }
                    else{
@@ -130,7 +132,7 @@ public class ErrorSim extends Thread{
                     error_code = error_code_number;
                    
                 }
-                else {error_code = 0;client_error_applied = false;}
+                else {error_code = 0;/*client_error_applied = false;*/}
                 sendPacket = errorCode(error_code,data, receivePacket.getLength(), server_ad, server_PORT, ServerSocket);
                 write_last_packet = isLast(data,write);
                 if(write_last_packet){
@@ -138,18 +140,18 @@ public class ErrorSim extends Thread{
                 }
               
                displayPacket(sendPacket, "send");
-               
                packet_lost_lock=false;
+               if(invaild_tid&&read&is_ack)unknowTID(0);
           }
-
+          //if(client_error_applied&&(read&&is_ack))
+          if((server_error_applied|| client_error_applied)&&read)  invaild_tid = false;
           if(packet_lost&&server_error_applied && is_data)packet_ready = true;//For reading request, Data lost
           if(server_error_applied && packet_ready && read){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For reading request, Data lost
           
           if(packet_lost&&client_error_applied && is_ack)packet_ready = true; //For reading request, ACK lost
           if(client_error_applied && packet_ready && read){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For reading request, ACK lost
-          
           if(!packet_lost){
-               if(!invaild_tid){
+                  if(!(invaild_tid&&((write&&is_data)||(read&&is_ack)))){
                    if(!packet_lost_lock){
                         try {
                             //ServerSocket.close();
@@ -165,94 +167,109 @@ public class ErrorSim extends Thread{
                         System.out.println("////////////////////////////////////////////////////////////Send to Server///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n"); 
                     }
                    packet_lost_lock=false;
+                
                         if(read_last_packet){initial_packet = true;error_list.remove(0);}
                         else{
                                     buffer = new byte[516];
                                     receivePacket = new DatagramPacket(buffer, buffer.length);
                                     System.out.println("Error Simulator: Waiting for server...");
                                     try {
+                                       
                                         ServerSocket.receive(receivePacket);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                         System.exit(1);
                                     }
                         }
-               if(read_last_packet){break;}
-               server_ad = receivePacket.getAddress();
-               server_PORT =  receivePacket.getPort();
-               data = new byte[receivePacket.getLength()];
-               System.arraycopy(receivePacket.getData(), 0, data, 0, data.length);
-               read_last_packet = isLast(data,read);
-               System.out.println("////////////////////////////////////////////////////////////Recieve Frome Server////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n"); 
-               displayPacket(receivePacket, "receive");
-               if(server_error && (getPacketNumber(receivePacket.getData()) == error_packet_number) && (first_time_error)) {
-                   System.out.println("\n--------Packet found. TO Client---------");
-                   error_code = error_code_number;
-                   server_error_applied = true;
-                   packet_lost = false;
-                   first_time_error = false;
-                   if(error_code<=7)error_packet = true;
-               }
-               else {error_code = 0;server_error_applied = false;}
-               sendPacket = errorCode(error_code,data, receivePacket.getLength(), client_ad, client_PORT,ClientSocket);
-               if(!error_packet)error_packet = isErrorPacket(sendPacket.getData());
-               /*  Sending the packet to Client    */
-               if(!packet_lost){     
-                    displayPacket(sendPacket, "send");
-                        try {
-                         //ClientSocket = new DatagramSocket(serverTID);
-                         if(invaild_tid){ErrorSocket = new DatagramSocket(); ErrorSocket.send(sendPacket);invaild_tid = false;}
-                         else{ClientSocket.send(sendPacket);}
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            System.exit(1);
+                   if(read_last_packet){break;}
+                   server_ad = receivePacket.getAddress();
+                   server_PORT =  receivePacket.getPort();
+                   data = new byte[receivePacket.getLength()];
+                   System.arraycopy(receivePacket.getData(), 0, data, 0, data.length);
+                   read_last_packet = isLast(data,read);
+                   System.out.println("////////////////////////////////////////////////////////////Recieve Frome Server////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n"); 
+                   displayPacket(receivePacket, "receive");
+                   if(server_error && (getPacketNumber(receivePacket.getData()) == error_packet_number) && (first_time_error)) {
+                       System.out.println("\n--------Packet found. TO Client---------");
+                       error_code = error_code_number;
+                       server_error_applied = true;
+                       packet_lost = false;
+                       first_time_error = false;
+                       if(error_code<7)error_packet = true;
+                   }
+                   else {error_code = 0;/*server_error_applied = false;*/}
+                   sendPacket = errorCode(error_code,data, receivePacket.getLength(), client_ad, client_PORT,ClientSocket);
+                   if(!error_packet)error_packet = isErrorPacket(sendPacket.getData());
+                   /*  Sending the packet to Client    */
+                   
+                   if(!packet_lost ){     
+                       //System.out.println("fking ,e "+invaild_tid);
+                        if(invaild_tid && ((read&&is_data)||(write&&is_ack))){
+                            //if(read&&is_data)unknowTID(1);
+                            //else unknowTID(0);
+                            unknowTID(1);
+                            //if ((write&&is_ack))unknowTID(1);
+                            //else unknowTID(0);
+                        }//Dont recieve in Unknow TID, for Client 
+                       else{
+                                displayPacket(sendPacket, "send");
+                                try {
+                                 //ClientSocket = new DatagramSocket(serverTID);
+                                 if(invaild_tid){ErrorSocket = new DatagramSocket(); ErrorSocket.send(sendPacket);}
+                                 else{ClientSocket.send(sendPacket);}
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                    System.exit(1);
+                                }
+                            System.out.println("Error Simulator: packet sent");
+                            System.out.println("////////////////////////////////////////////////////////////Send to Client///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n"); 
                         }
-                    System.out.println("Error Simulator: packet sent");
-                    System.out.println("////////////////////////////////////////////////////////////Send to Client///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////\n"); 
-                }
+                       
+                    }
                }
                else{     
-                        try {
-                            ErrorSocket = new DatagramSocket();
-                        } catch (SocketException e) {
-                            e.printStackTrace();
-                            System.exit(1);
-                        }
-                        try {
-                                    ErrorSocket.send(sendPacket);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                    System.exit(1);
-                        }
-                        buffer = new byte[516];
-                        receivePacket = new DatagramPacket(buffer, buffer.length);
-                        //System.out.println("Error Simulator: Waiting for server...");
-                        try {
-                                    ErrorSocket.receive(receivePacket);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                    System.exit(1);
-                        }
-                        System.out.println("-------------------------Error Unknow TID Recieved---------------------------");
-                        displayPacket(receivePacket, "receive");
-                        System.out.println("---------------------------------Socket Close--------------------------------");
-                        ErrorSocket.close();
-                        invaild_tid = false;
+                   unknowTID(0);//recieve in Unknow TID, for Server 
                 } 
            }
           if(packet_lost && is_ack && server_error_applied){packet_ready = true;}//For writing request, ACK lost
           if(server_error_applied && packet_ready && write){packet_lost = false;packet_ready = false;packet_lost_lock=true;}//For writing request, ACK lost
-          
           if(packet_lost&&client_error_applied && is_data ){packet_ready = true;}////For writing request, Data lost
           if(client_error_applied && packet_ready && write){packet_lost = false;packet_ready = false;packet_lost_lock=true;}////For writing request, ACK lost
-          
           if(packet_lost&&client_error_applied && !is_data && !is_ack)packet_lost = false;// for initial packet Lost
         }while(!write_last_packet|| error_packet);//!write_last_packet || !read_last_packet || !error_packet
         if(client_error && !client_error_applied)System.out.println("CLIENT ERROR APPLIED FAILED"); else if(server_error && !server_error_applied)System.out.println("SERVER ERROR APPLIED FAILED");
+        //if(!new_list&&!error_list.isEmpty())System.out.println("Next Error is Ready to Apply");
         error_packet = false;
     }
     private void disconnect(DatagramSocket ds){
         ds.close();
+    }
+    private void unknowTID(int mode){ // mode 0 send and recieve packet from errorSocket, mode 1 only send
+        try {
+            ErrorSocket = new DatagramSocket();
+        } catch (SocketException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.out.println("-------------------------Error Unknow TID Recieved---------------------------");
+        
+            try {
+                ErrorSocket.send(sendPacket);
+            } catch (IOException e) {
+                e.printStackTrace(); System.exit(1);
+            }
+        if(mode != 1){     
+            byte[] buffer = new byte[516];
+            receivePacket = new DatagramPacket(buffer, buffer.length);
+            
+            try {ErrorSocket.receive(receivePacket);} 
+            catch (IOException e) {e.printStackTrace();System.exit(1);}
+            
+            displayPacket(receivePacket, "receive");
+        }
+        System.out.println("---------------------------------Socket Close--------------------------------");
+        ErrorSocket.close();
+       
     }
     private void selectErrorCode(){
         new_list = true;

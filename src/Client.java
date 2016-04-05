@@ -264,80 +264,25 @@ public class Client {
     ///--------------------------------------------------------------------------------------------------------------------------
     // Sends error for different TID
    private void differentTIDError(){
-	   byte[] err = null;
-	   String errString = "Different TID received. Error Code 5.";
-	   err = errString.getBytes();
-	   byte[] errBuf = new byte[err.length + 4];
-	   errBuf[0] = ZEROBYTE;
-	   errBuf[1] = FIVEBYTE;
-	   errBuf[2] = ZEROBYTE;
-	   errBuf[3] = FIVEBYTE;
-	   System.arraycopy(err, 0, errBuf, 4, err.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), serverTID);
-	   try {
-		   TransmitPacket(errorPacket);
-	   } catch (IOException e) {
-		   // TODO Auto-generated catch block
-		   e.printStackTrace();
-	   }
+	   System.out.println("Different TID received. Error Code 5.");
    }
    
    //Sends error code 4 for wrong block number
    private void sendErrWrongBlockNumber(){
-	   byte[] err = null;
-	   String errString = "Invalid TFTP Operation Wrong Block Number. ERROR CODE 4";
-	   err = errString.getBytes();
-	   byte[] errBuf = new byte[err.length + 4];
-	   errBuf[0] = ZEROBYTE;
-	   errBuf[1] = FIVEBYTE;
-	   errBuf[2] = ZEROBYTE;
-	   errBuf[3] = FOURBYTE;
-	   System.arraycopy(err, 0, errBuf, 4, err.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
-	   try {
-		   TransmitPacket(errorPacket);
-	   } catch (IOException e) {
-		   // TODO Auto-generated catch block
-		   e.printStackTrace();
-	   }
+       System.out.println("Invalid TFTP Operation Wrong Block Number. ERROR CODE 4");
    }
    
    private void sendErrWrongPackSize(){
-	   byte[] err = null;
-	   String errString = "Invalid TFTP Operation Wrong Packet Size. ERROR CODE 4";
-	   err = errString.getBytes();
-	   byte[] errBuf = new byte[err.length + 4];
-	   errBuf[0] = ZEROBYTE;
-	   errBuf[1] = FIVEBYTE;
-	   errBuf[2] = ZEROBYTE;
-	   errBuf[3] = FOURBYTE;
-	   System.arraycopy(err, 0, errBuf, 4, err.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, receivePacket.getAddress(), receivePacket.getPort());
-	   try {
-		   TransmitPacket(errorPacket);
-	   } catch (IOException e) {
-		   // TODO Auto-generated catch block
-		   e.printStackTrace();
-	   }
+       System.out.println("Invalid TFTP Operation Wrong Packet Size. ERROR CODE 4");
    }
    
+   private void sendErrWrongOPCode(){
+       System.out.println("Invalid TFTP Operation Wrong Op Code. ERROR CODE 4");
+   }
+   
+   
    private void AccessViolationError() throws UnknownHostException{
-	   String errString = "Access Violation. Error Code 2.";
-	   byte[] tempBuf = null;
-	   tempBuf = errString.getBytes();
-	   byte[] errBuf = new byte[tempBuf.length + 4];
-	   errBuf[0] = 0;
-	   errBuf[1] = 5;
-	   errBuf[2] = 0;
-	   errBuf[3] = 2;
-	   System.arraycopy(tempBuf, 0, errBuf, 4, tempBuf.length);
-	   DatagramPacket errorPacket = new DatagramPacket(errBuf, errBuf.length, add, TID);
-	   try {
-		   TransmitPacket(errorPacket);
-	   } catch (IOException e) {
-		   // TODO Auto-generated catch block
-		   e.printStackTrace();
-	   }
+       System.out.println("ccess Violation. Error Code 2.");
    }
     
     private void ObtainPacketWithTimeoutGiveup(){
@@ -345,7 +290,7 @@ public class Client {
         receivePacket = new DatagramPacket(data, data.length);
         
         try {
-			sendReceiveSocket.setSoTimeout(3000);
+			sendReceiveSocket.setSoTimeout(5000);
 		} catch (SocketException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -362,6 +307,7 @@ public class Client {
                  
                  System.out.println("server: " + serverTID + "  this TID: " + receivePacket.getPort());
                  if(receivePacket.getPort() != serverTID){
+                	 i = 0; // restart number of waits 
                  	 System.out.println("CLIENT: --------------------------------Different TID received...Ignored\n" );
                    	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
                 	 differentTIDError();
@@ -389,9 +335,9 @@ public class Client {
              	 DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
               	  System.out.println("Block Number Received: " + a); 
              	  System.out.println("Block Number Expected: " + (blockNumber)); 
-             	 System.out.println("Resending ack with: " + a); 
+             	 System.out.println("Resending ack with Block Number: " + a); 
              	 byte[] bno = new byte[4];
-             	  bno[0]= ZEROBYTE;//BlockNumber shift when 128	
+             	  bno[0]= ZEROBYTE;	
                   bno[1]= FOURBYTE;		//Block number
              	  bno[2]= (byte)(((a) >> 8) % 0xffff);//BlockNumber shift when 128	
                   bno[3]= (byte)((a) % 0xffff);		//Block number
@@ -406,10 +352,11 @@ public class Client {
 //                	 blockNumber =a;
 //                 }
                  
-                 
+                 if(receivePacket.getLength()<= 516){
                  //Display Packet if Appropriate Packet Received
                  DisplayPacketInfo(receivePacket, receivePacket.getData(), "From");
                  // break out of loop if appropriate packet is received
+                 }
                  break;
              }
              catch(SocketTimeoutException e) {
@@ -438,7 +385,7 @@ public class Client {
           
         
         try {
-			sendReceiveSocket.setSoTimeout(1000);
+			sendReceiveSocket.setSoTimeout(4000);
 		} catch (SocketException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
@@ -952,22 +899,27 @@ public class Client {
              }
         
              
+             // make a be equal to the current received block number
+             int bno = ((receivePacket.getData()[2] <<8) &0xff00) +( receivePacket.getData()[3] & 0xff);
            
               sendPacket = new DatagramPacket(ack, ack.length, add, receivePacket.getPort());
              
-             
+              if(bno == blockNumber){
               TransmitPacket(sendPacket);
+              }
              byte t[] = receivePacket.getData();
-             
+              
              
              //trim array to only include actual data
              t = Arrays.copyOfRange(t,0 ,receivePacket.getLength());
             		 
              //trim byte array to only include the last 512 bytes
              byte[] tw =  Arrays.copyOfRange(t,4 ,receivePacket.getLength());
-             
+            
          
              
+             //Only write if block number received is current block number expected
+             if(bno == blockNumber){
          //check if proper data blocks are received
              if(isDATA(t)){
             	 try{
@@ -977,15 +929,22 @@ public class Client {
             		 restartApplication();
             	 }
              }else {
+            	 if(t.length > 516){
             	 System.out.println("Error Found");
-          	   	System.out.println("Error: Invalid Packet Size Code 4");
+          	   	System.out.println("Error Code 4: Invalid Packet Size");
           	   	sendErrWrongPackSize();
+            	 }
+            	 else {
+            		 System.out.println("Error Found");
+               	   	System.out.println("Error Code 4: Invalid Op Code");
+            		 sendErrWrongOPCode();
+            	 }
           	   System.out.println("CLIENT: -----------------Deleting: " + outputFile);
           	 	outputFile.delete();
           	 	System.out.println("STARTING NEW TRANSFER");
           	 	restartApplication();
              }
-             
+             } else continue; // if not continue transfer without incrementing blockNumber
                 
              
               System.out.println("==================================================================================");    
