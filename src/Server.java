@@ -1,4 +1,4 @@
-﻿//--------------------------------------------------// 
+
 //SYSC 3303 Assignment 1							//
 //TFTP Server Program: Server.java					//
 //													//
@@ -19,7 +19,7 @@
 //   and THIS multiple threaded TFTP Server that runs on a different computer.
 //3. This Server will run as a separate Win32 process, and the programs will communicate via DatagramSocket
 //   objects. 
-//4. In “normal” mode, only the client and server programs will run. In “test” mode, all three programs will be used.
+//4. In normal mode, only the client and server programs will run. In test mode, all three programs will be used.
 //
 //
 //--------------------
@@ -33,7 +33,7 @@
 //Server Detail Design, Iteration #0 and #1
 //-----------------------------------------
 //1. Main process will start a listening thread that will wait on port 69 for UDP datagrams containing WRQ and RRQ packets to come.
-//2. Main process then waits for the “shutdown”, case insensitive, command from the server operator to shut down the Server program.
+//2. Main process then waits for the shutdown, case insensitive, command from the server operator to shut down the Server program.
 //3. The listening thread 
 //	 a. Verify that the received TFTP packet is a valid WRQ packet or RRQ packet
 //	 b. Create another thread (call it the client connection thread), and pass it the TFTP packet; and
@@ -74,7 +74,7 @@
 //		On RRQ, duplication of ACK. No action required.
 //		On WRQ, duplication of DATA is caused by not receiving the ACK by the client.
 //				Drop the duplicated package and ACK it.
-//2. Use TFTP's “wait for acknowledgment/timeout/retransmit” protocol
+//2. Use TFTP's wait for acknowledgement/timeout/retransmit protocol
 //3. Duplicate ACKs is not be acknowledged, and 
 //4. Only the side that is currently sending DATA packets is required to retransmit after a timeout.
 //

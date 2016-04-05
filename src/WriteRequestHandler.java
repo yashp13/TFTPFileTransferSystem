@@ -470,7 +470,7 @@ public class WriteRequestHandler {
 			try {
 				bufferedOutputStream.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 			}
 		}
 	}
