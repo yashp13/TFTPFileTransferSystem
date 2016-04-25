@@ -316,7 +316,7 @@ Member Resposibilites - Iteration #4
 ================================================
 Jeremy: |Readme, Client
 ------------------------------------------------
-Yash:	|Client, debugging
+Yash:	|Client, ErroSim, debugging
 ------------------------------------------------
 Obinna:	|Diagrams, debugging
 ------------------------------------------------
